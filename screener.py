@@ -37,8 +37,8 @@ class Credentials:
         self.api_key = config(f"{s_type}_API_KEY")
         self.api_secret = config(f"{s_type}_API_SECRET")
         if not screener_type in [
-            "binance_regular",
-            "bybit",
+            BINANCE_REGULAR,
+            BYBIT,
         ]:
             self.api_passphrase = config(f"{s_type}_API_PASSPHRASE")
 
@@ -136,19 +136,13 @@ SCREENER_TYPES_PROFILES = {
 
 
 class Screener:
-    """returns a Screener object that can request an Exchange API, calculate TA indicators, and list relevant pairs based on historic price data.
-
-    # instructions
-    1. pip install -r requirements.py
-    2. # create .env file in same directory as screener.py, with variabeles like:
-    KUCOIN_REGULAR_API_KEY='your_api_key'
-    KUCOIN_REGULAR_API_SECRET='your_api_secret'
-    KUCOIN_REGULAR_API_PASSPHRASE='your_api_passphrase'
-
-    3. python -W ignore screener.py
-    """
+    """Returns a Screener object that can request an Exchange API, calculate TA indicators, and list relevant pairs based on historic price data."""
 
     def __init__(self, screener_type: str, interval: str) -> None:
+        """Args:
+        screener_type (str): must be 1 of SCREENER_TYPES
+        interval (str): must be 1 of SCREENER_TYPES_PROFILES[screener_type]["interval"].keys()
+        """
         if not screener_type in SCREENER_TYPES:
             raise Exception(
                 f"""Screener type must be one of '{", ".join(t for t in SCREENER_TYPES)}'"""
@@ -209,6 +203,14 @@ class Screener:
         return self.open_contracts
 
     def get_candles(self, symbol: str) -> List[List[Any]]:
+        """returns a list of lists with candle information
+
+        Args:
+            symbol (str): like BTCUSDT or ETHUSD
+
+        Returns:
+            List[List[Any]]: list of candles where 'a candle' is a list of strings with candle information
+        """
         if self.screener_type == BINANCE_REGULAR:
             return self.client.klines(symbol, "1d", limit=100)
 
@@ -272,6 +274,18 @@ class Screener:
                 return return_value.get("data")
 
     def _api_request(self, method, base_url, path, params=None, json_dict=None) -> dict:
+        """returns the response of an API request
+
+        Args:
+            method (_type_): GET / POST
+            base_url (_type_): https base url
+            path (_type_): /path
+            params (_type_, optional): additional API information. Defaults to None.
+            json_dict (_type_, optional). Defaults to None.
+
+        Returns:
+            dict: _description_
+        """
         # current time in milliseconds timestamp
         now = int(time.time() * 1000)
 
@@ -332,7 +346,15 @@ class Screener:
             print(r.content.decode())
             return {}
 
-    def get_dataframe(self, candles: dict) -> DataFrame | None:
+    def get_dataframe(self, candles: List[List[Any]]) -> DataFrame | None:
+        """returns pandas dataframe or None
+
+        Args:
+            candles (List[List[Any]]): candles with candle information
+
+        Returns:
+            DataFrame | None: pandas dataframe if everything works, None if else
+        """
         # refuse empty candle dict
         if not candles:
             return None
@@ -516,6 +538,7 @@ class Screener:
 displaying it like: score(yesterday's score) token name"""
 
     def run(self):
+        """Puts all class functions together. Prints all pair information as it loops open contracts. Finally prints all interesting pairs with scores."""
         longs = []
         shorts = []
 
