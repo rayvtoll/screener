@@ -15,7 +15,6 @@ numpy==1.23.5
 pandas==1.5.2
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
-pybit==2.4.1
 pycparser==2.21
 pyOpenSSL==22.1.0
 python-dateutil==2.8.2

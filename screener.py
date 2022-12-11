@@ -164,15 +164,6 @@ class Screener:
                 key=self.credentials.api_key, secret=self.credentials.api_secret
             )
 
-        if self.screener_type == BYBIT:
-            from pybit import inverse_perpetual
-
-            self.client = inverse_perpetual.HTTP(
-                endpoint=self.profile.get("base_url"),
-                api_key=self.credentials.api_key,
-                api_secret=self.credentials.api_secret,
-            )
-
     def get_open_contracts(self) -> List[str]:
         """returns a list of strings with tradable pairs"""
         if self.screener_type == BINANCE_REGULAR:
