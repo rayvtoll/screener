@@ -5,6 +5,7 @@ from pandas import DataFrame
 import math
 import datetime as dt
 import requests
+import numpy as np
 import time
 import json
 import base64
@@ -398,120 +399,100 @@ class Screener:
         dataframe["close_shift"] = dataframe.shift(periods=1)["Close price"]
         dataframe["8ema_shift2"] = dataframe.shift(periods=2)["8ema"]
         dataframe["close_shift2"] = dataframe.shift(periods=2)["Close price"]
-        dataframe["2_over_8ema"] = dataframe.apply(
-            lambda x: 1
-            if x["close_shift"] > x["8ema_shift"]
-            and x["close_shift2"] > x["8ema_shift2"]
-            else 0,
-            axis=1,
+        dataframe["2_over_8ema"] = np.where(np.logical_and(
+            dataframe["close_shift"] > dataframe["8ema_shift"], dataframe["close_shift2"] > dataframe["8ema_shift2"]),
+            1, 0
         )
-        dataframe["2_under_8ema"] = dataframe.apply(
-            lambda x: 1
-            if x["close_shift"] < x["8ema_shift"]
-            and x["close_shift2"] < x["8ema_shift2"]
-            else 0,
-            axis=1,
+        dataframe["2_under_8ema"] = np.where(np.logical_and(
+            dataframe["close_shift"] < dataframe["8ema_shift"], dataframe["close_shift2"] < dataframe["8ema_shift2"]),
+            1, 0
         )
 
         # 21EMA
         dataframe["21ema"] = EMAIndicator(
             dataframe["Close price"], window=21
         ).ema_indicator()
-        dataframe["8ema_over_21ema"] = dataframe.apply(
-            lambda x: 1
-            if x["Close price"] > x["8ema"] and x["Close price"] > x["21ema"]
-            else 0,
-            axis=1,
+        dataframe["8ema_over_21ema"] = np.where(
+            dataframe["8ema"] > dataframe["21ema"],
+            1, 0
         )
-        dataframe["8ema_under_21ema"] = dataframe.apply(
-            lambda x: 1
-            if x["Close price"] < x["8ema"] and x["Close price"] < x["21ema"]
-            else 0,
-            axis=1,
+        dataframe["8ema_under_21ema"] = np.where(
+            dataframe["8ema"] < dataframe["21ema"],
+            1, 0
         )
 
         # ichimoku cloud color
-        dataframe["ichimoku_cloud_green"] = dataframe.apply(
-            lambda x: 1 if x["trend_ichimoku_a"] > x["trend_ichimoku_b"] else 0, axis=1
+        dataframe["ichimoku_cloud_green"] = np.where(
+            dataframe["trend_ichimoku_a"] > dataframe["trend_ichimoku_b"],
+            1, 0
         )
-        dataframe["ichimoku_cloud_red"] = dataframe.apply(
-            lambda x: 1 if x["trend_ichimoku_a"] < x["trend_ichimoku_b"] else 0, axis=1
+        dataframe["ichimoku_cloud_red"] = np.where(
+            dataframe["trend_ichimoku_a"] < dataframe["trend_ichimoku_b"],
+            1, 0
         )
 
         # ichimoku above / under the cloud
-        dataframe["ichimoku_above_cloud"] = dataframe.apply(
-            lambda x: 1
-            if x["Close price"] > x["trend_visual_ichimoku_a"]
-            and x["Close price"] > x["trend_visual_ichimoku_b"]
-            else 0,
-            axis=1,
+        dataframe["ichimoku_above_cloud"] = np.where(np.logical_and(
+            dataframe["Close price"] > dataframe["trend_visual_ichimoku_a"],
+            dataframe["Close price"] > dataframe["trend_visual_ichimoku_b"]),
+            1, 0
         )
-        dataframe["ichimoku_beneeth_cloud"] = dataframe.apply(
-            lambda x: 1
-            if x["Close price"] < x["trend_visual_ichimoku_a"]
-            and x["Close price"] < x["trend_visual_ichimoku_b"]
-            else 0,
-            axis=1,
+        
+        dataframe["ichimoku_beneeth_cloud"] = np.where(np.logical_and(
+            dataframe["Close price"] < dataframe["trend_visual_ichimoku_a"],
+            dataframe["Close price"] < dataframe["trend_visual_ichimoku_b"]),
+            1, 0
         )
 
         # ichimoku conversion / base line
-        dataframe["ichimoku_conversion_over_base"] = dataframe.apply(
-            lambda x: 1 if x["trend_ichimoku_conv"] > x["trend_ichimoku_base"] else 0,
-            axis=1,
+        dataframe["ichimoku_conversion_over_base"] = np.where(
+            dataframe["trend_ichimoku_conv"] > dataframe["trend_ichimoku_base"],
+            1, 0
         )
-        dataframe["ichimoku_conversion_under_base"] = dataframe.apply(
-            lambda x: 1 if x["trend_ichimoku_conv"] < x["trend_ichimoku_base"] else 0,
-            axis=1,
+        dataframe["ichimoku_conversion_under_base"] = np.where(
+            dataframe["trend_ichimoku_conv"] < dataframe["trend_ichimoku_base"],
+            1, 0
         )
-
-        # ichimoke lagline
-        dataframe["price_lag_shift"] = dataframe.shift(periods=-26)["Close price"]
-        dataframe["ichimoku_lag_diff"] = (
-            dataframe.shift(periods=26)["price_lag_shift"]
-            - dataframe.shift(periods=26)["Close price"]
+        dataframe["ichimoku_above_lag"] = np.where(
+            dataframe["Close price"] - dataframe.shift(periods=26)["Close price"] > 0,
+            1, 0
         )
-        dataframe["ichimoku_above_lag"] = dataframe.apply(
-            lambda x: 1 if x["ichimoku_lag_diff"] > 0 else 0, axis=1
-        )
-        dataframe["ichimoku_beneeth_lag"] = dataframe.apply(
-            lambda x: 1 if x["ichimoku_lag_diff"] < 0 else 0, axis=1
+        dataframe["ichimoku_beneeth_lag"] = np.where(
+            dataframe["ichimoku_above_lag"] == 0,
+            1, 0
         )
 
         # MACD
-        dataframe["macd_green"] = dataframe.apply(
-            lambda x: 1 if x["trend_macd_diff"] > 0 else 0, axis=1
+        dataframe["macd_green"] = np.where(
+            dataframe["trend_macd_diff"] > 0,
+            1, 0
         )
-        dataframe["macd_red"] = dataframe.apply(
-            lambda x: 1 if x["trend_macd_diff"] < 0 else 0, axis=1
+        dataframe["macd_red"] = np.where(
+            dataframe["macd_green"] == 0,
+            1, 0
         )
 
         # THE PANELS
         # long
-        dataframe["panel_long"] = dataframe.apply(
-            lambda x: (
-                x["ichimoku_cloud_green"]
-                + x["ichimoku_above_cloud"]
-                + x["ichimoku_conversion_over_base"]
-                + x["ichimoku_above_lag"]
-                + x["macd_green"]
-                + x["2_over_8ema"]
-                + x["8ema_over_21ema"]
-            ),
-            axis=1,
+        dataframe["panel_long"] = (
+            dataframe["ichimoku_cloud_green"]
+            + dataframe["ichimoku_above_cloud"]
+            + dataframe["ichimoku_conversion_over_base"]
+            + dataframe["ichimoku_above_lag"]
+            + dataframe["macd_green"]
+            + dataframe["2_over_8ema"]
+            + dataframe["8ema_over_21ema"]
         )
 
         # short
-        dataframe["panel_short"] = dataframe.apply(
-            lambda x: (
-                x["ichimoku_cloud_red"]
-                + x["ichimoku_beneeth_cloud"]
-                + x["ichimoku_conversion_under_base"]
-                + x["ichimoku_beneeth_lag"]
-                + x["macd_red"]
-                + x["2_under_8ema"]
-                + x["8ema_under_21ema"]
-            ),
-            axis=1,
+        dataframe["panel_short"] = (
+            dataframe["ichimoku_cloud_red"]
+            + dataframe["ichimoku_beneeth_cloud"]
+            + dataframe["ichimoku_conversion_under_base"]
+            + dataframe["ichimoku_beneeth_lag"]
+            + dataframe["macd_red"]
+            + dataframe["2_under_8ema"]
+            + dataframe["8ema_under_21ema"]
         )
 
         dataframe = dataframe.astype(
