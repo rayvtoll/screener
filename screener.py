@@ -164,6 +164,7 @@ class Screener:
             self.client = Spot(
                 key=self.credentials.api_key, secret=self.credentials.api_secret
             )
+        self.usdt_pairs_counter: int = 0
 
     def get_open_contracts(self) -> List[str]:
         """returns a list of strings with tradable pairs"""
@@ -192,6 +193,7 @@ class Screener:
                     for contract in open_contracts_dict.get("result", [])
                 ]
         self.open_contracts.sort()
+        # [print(f'\"{i}\",') for i in self.open_contracts if not i.startswith("USDT")]
         return self.open_contracts
 
     def get_candles(self, symbol: str) -> List[List[Any]]:
@@ -504,8 +506,10 @@ class Screener:
 
         return dataframe
 
-    def get_text(self) -> str:
-        return f"""@here {len(self.open_contracts)} {" ".join(self.screener_type.title().split("_"))} pairs scanned on timeframe({self.interval}) with Python using an API
+    @property
+    def discord_text(self) -> str:
+        return f"""@here {len(self.open_contracts)} {" ".join(self.screener_type.title().split("_"))} pairs scanned in total
+{str(self.usdt_pairs_counter)} USDT pairs selected for rating on timeframe `{self.interval}` with Python using an API
 8/21 EMA cross + 5/7 Assassins panel score minimum #custom-indicator-scripts
 displaying it like: score(yesterday's score) token name"""
 
@@ -535,6 +539,8 @@ displaying it like: score(yesterday's score) token name"""
                     "SUSD",
                     "OUSD",
                     "DOWNUSDT",
+                    "UPUSDT",
+                    "BUSD",
                 ]
             ):
                 continue
@@ -542,11 +548,16 @@ displaying it like: score(yesterday's score) token name"""
             if not "USDT" in symbol:
                 continue
 
+            if symbol.startswith("USD"):
+                continue
+
             # create the dataframe with candles
             dataframe = self.get_dataframe(self.get_candles(symbol))
 
             if not isinstance(dataframe, pd.DataFrame):
                 continue
+            
+            self.usdt_pairs_counter += 1
 
             # get panel scores
             panel_long = dataframe["panel_long"].iloc[-1]
@@ -584,7 +595,7 @@ displaying it like: score(yesterday's score) token name"""
         shorts.sort(key=lambda x: x[1], reverse=True)
 
         print()
-        print(self.get_text())
+        print(self.discord_text)
 
         if longs:
             print()
