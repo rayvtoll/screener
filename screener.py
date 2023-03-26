@@ -49,10 +49,11 @@ class Screener:
         if not hasattr(self, "_open_contracts"):
             token_dict = self.exchange.load_markets()
             self._open_contracts = [
-                token_dict[i].get("info", {}).get("symbol", "")
-                for i in token_dict.keys()
-                if token_dict[i].get("info", {}).get("status", "").lower() == "trading"
-                and token_dict[i].get("info", {}).get("symbol", "")
+                token_dict[token_key].get("info", {}).get("symbol", "")
+                for token_key in token_dict.keys()
+                if token_dict[token_key].get("info", {}).get("symbol", "")
+                and token_dict[token_key].get("info", {}).get("status", "").lower() == "trading"
+                
             ]
             self._open_contracts = list(set(self._open_contracts))
             self._open_contracts.sort()
