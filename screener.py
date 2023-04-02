@@ -4,7 +4,8 @@ import pandas as pd
 from pandas import DataFrame
 from ta import add_all_ta_features
 from ta.trend import EMAIndicator, SMAIndicator
-from typing import Any, List
+
+from typing import Any, List, Tuple
 
 # global variables
 PANEL_THRESHOLD = 5
@@ -52,11 +53,43 @@ class Screener:
                 token_dict[token_key].get("info", {}).get("symbol", "")
                 for token_key in token_dict.keys()
                 if token_dict[token_key].get("info", {}).get("symbol", "")
-                and token_dict[token_key].get("info", {}).get("status", "").lower() == "trading"
-                
+                and token_dict[token_key].get("info", {}).get("status", "").lower()
+                == "trading"
             ]
             self._open_contracts = list(set(self._open_contracts))
+
+            for symbol in self._open_contracts.copy():
+                # remove stuff that somehow doesn"t work
+                if any(
+                    i in symbol
+                    for i in [
+                        "TUSD",
+                        "UST",
+                        "USDN",
+                        "USDJ",
+                        "USDC",
+                        "SUSD",
+                        "OUSD",
+                        "DOWNUSDT",
+                        "UPUSDT",
+                        "BUSD",
+                        "1000",
+                        "_",
+                    ]
+                ):
+                    self._open_contracts.remove(symbol)
+                    continue
+
+                if not "USDT" in symbol:
+                    self._open_contracts.remove(symbol)
+                    continue
+
+                if symbol.startswith("USD"):
+                    self._open_contracts.remove(symbol)
+                    continue
+
             self._open_contracts.sort()
+
         return self._open_contracts
 
     def get_candles(self, symbol: str) -> List[List[Any]]:
@@ -242,19 +275,17 @@ class Screener:
 
     @property
     def discord_text(self) -> str:
-        return f"""@here {len(self.open_contracts)} {" ".join(self.screener_type.title().split("_"))} pairs scanned in total
-{str(self.usdt_pairs_counter)} USDT pairs selected for rating on timeframe `{self.timeframe}` with Python using an API
+        return f"""@here
+{str(self.usdt_pairs_counter)} {" ".join(self.screener_type.title().split("_"))} tradable USDT pairs scanned for rating on timeframe `{self.timeframe}` with Python using an API
 
 8/21 EMA cross + {PANEL_THRESHOLD}/8 panel score minimum:
 - 2 candle closes above/below 8 EMA
 - 8/21 EMA cross
 - MAC-D color
 - 4 Ichimoku Cloud indicators
-- candle close above/below 200 SMA
+- candle close above/below 200 SMA"""
 
-Displaying it like: score(yesterday's score) token name"""
-
-    def run(self):
+    def run(self) -> Tuple[str, ]:
         """Puts all class functions together. Prints all pair information as it loops open contracts. Finally prints all interesting pairs with scores."""
         longs = []
         shorts = []
@@ -265,35 +296,11 @@ Displaying it like: score(yesterday's score) token name"""
         # loop over tickers
         for symbol in self.open_contracts:
 
-            # remove stuff that somehow doesn"t work
-            if any(
-                i in symbol
-                for i in [
-                    "TUSD",
-                    "UST",
-                    "USDN",
-                    "USDJ",
-                    "USDC",
-                    "SUSD",
-                    "OUSD",
-                    "DOWN/USDT",
-                    "UP/USDT",
-                    "BUSD",
-                    "1000",
-                ]
-            ):
-                continue
-
-            if not "USDT" in symbol:
-                continue
-
-            if symbol.startswith("USD"):
-                continue
-
             # create the dataframe with candles
-            dataframe = self.get_dataframe(self.get_candles(symbol))
-
-            if not isinstance(dataframe, pd.DataFrame):
+            if not isinstance(
+                (dataframe := self.get_dataframe(self.get_candles(symbol))),
+                pd.DataFrame,
+            ):
                 continue
 
             self.usdt_pairs_counter += 1
@@ -314,6 +321,7 @@ Displaying it like: score(yesterday's score) token name"""
                         symbol,
                         panel_long,
                         panel_long_shift,
+                        round(dataframe["momentum_rsi"].iloc[-1], 2),
                     )
                 )
 
@@ -326,6 +334,7 @@ Displaying it like: score(yesterday's score) token name"""
                         symbol,
                         panel_short,
                         panel_short_shift,
+                        round(dataframe["momentum_rsi"].iloc[-1], 2),
                     )
                 )
 
@@ -335,6 +344,7 @@ Displaying it like: score(yesterday's score) token name"""
 
         print()
         print(self.discord_text)
+        print("Displaying it like: score(yesterday's score) token name")
 
         if longs:
             print()
@@ -349,6 +359,8 @@ Displaying it like: score(yesterday's score) token name"""
                 f"{len(shorts)} SHORTS:\nscore coin\n"
                 + "\n".join("{}({}) {}".format(i[1], int(i[2]), i[0]) for i in shorts)
             )
+        
+        return self.discord_text, longs, shorts
 
 
 if __name__ == "__main__":
