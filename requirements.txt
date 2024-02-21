@@ -20,5 +20,5 @@ pytz==2023.2
 requests==2.28.2
 six==1.16.0
 ta==0.10.2
-urllib3==1.26.15
+urllib3==2.2.1
 yarl==1.8.2
