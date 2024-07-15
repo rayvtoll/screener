@@ -16,7 +16,7 @@ pandas==1.5.3
 pycares==4.3.0
 pycparser==2.21
 python-dateutil==2.8.2
-pytz==2023.2
+pytz==2024.1
 requests==2.31.0
 six==1.16.0
 ta==0.10.2
