@@ -19,6 +19,6 @@ python-dateutil==2.9.0.post0
 pytz==2024.1
 requests==2.31.0
 six==1.16.0
-ta==0.10.2
+ta==0.11.0
 urllib3==2.2.2
 yarl==1.8.2
